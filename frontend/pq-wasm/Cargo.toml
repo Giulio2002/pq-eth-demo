@@ -1,0 +1,20 @@
+[package]
+name = "pq-wasm"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+pqc_dilithium = { path = "pqc_dilithium_r3", features = ["mode2"] }
+falcon-rust = "0.1"
+# getrandom v0.2 (pulled transitively by pqc_dilithium) needs "js" feature for WASM
+getrandom_v2 = { package = "getrandom", version = "0.2", features = ["js"] }
+# getrandom v0.3 (may be pulled by other deps) needs "wasm_js" feature
+getrandom = { version = "0.3", features = ["wasm_js"] }
+
+[profile.release]
+opt-level = "s"
+lto = true

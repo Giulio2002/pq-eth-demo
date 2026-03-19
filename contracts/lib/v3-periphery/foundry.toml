@@ -1,0 +1,13 @@
+[profile.default]
+src = "contracts"
+out = "out"
+libs = ["lib", "../v3-core", "../openzeppelin-contracts-v3"]
+optimizer = true
+optimizer_runs = 200
+solc = "0.7.6"
+skip = ["contracts/V3Migrator.sol", "contracts/NonfungibleTokenPositionDescriptor.sol", "contracts/test/**"]
+remappings = [
+  "@uniswap/v3-core/=/Users/monkeair/work/pq-eth-demo/contracts/lib/v3-core/",
+  "@openzeppelin/contracts/=/Users/monkeair/work/pq-eth-demo/contracts/lib/openzeppelin-contracts-v3/contracts/",
+  "base64-sol/=lib/base64-sol/",
+]

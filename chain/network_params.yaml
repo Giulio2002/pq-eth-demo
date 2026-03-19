@@ -1,0 +1,20 @@
+participants:
+  - el_type: erigon
+    el_image: erigon-pq:local
+    cl_type: prysm
+    cl_image: ""
+    count: 1
+    supernode: true
+
+network_params:
+  preset: minimal
+  num_validator_keys_per_node: 128
+  seconds_per_slot: 2
+  slot_duration_ms: 2000
+  network_id: "3151908"
+  electra_fork_epoch: 0
+  fulu_fork_epoch: 0
+  genesis_delay: 20
+  prefunded_accounts: '{"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266": {"balance": "50000000000ETH"}, "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": {"balance": "50000000000ETH"}, "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": {"balance": "50000000000ETH"}, "0x90F79bf6EB2c4f870365E785982E1f101E93b906": {"balance": "50000000000ETH"}}'
+
+additional_services: []

@@ -1,0 +1,17 @@
+Zabaniya/
+node_modules/
+.next/
+out/
+cache/
+target/
+*.log
+pq-eth-backend
+contracts/lib/
+frontend/pq-wasm/pqc_dilithium_r3/
+frontend/pq-wasm/target/
+frontend/pq-wasm/pkg/
+backend/data/
+test_*.py
+/tmp/
+deployments.json
+deployments.v3.json
