@@ -6,6 +6,7 @@ import "./FalconDirectWallet.sol";
 import "./DilithiumDirectWallet.sol";
 import "./FalconNTTWallet.sol";
 import "./DilithiumNTTWallet.sol";
+import "./EphemeralECDSAWallet.sol";
 
 contract PQWalletFactory {
     event WalletCreated(address indexed wallet, address indexed owner, uint8 algorithm);
@@ -25,6 +26,8 @@ contract PQWalletFactory {
             w = new FalconNTTWallet();
         } else if (algo == 3) {
             w = new DilithiumNTTWallet();
+        } else if (algo == 4) {
+            w = new EphemeralECDSAWallet();
         } else {
             revert("Invalid algorithm");
         }

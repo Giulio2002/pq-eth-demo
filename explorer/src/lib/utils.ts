@@ -110,6 +110,7 @@ export function algorithmLabel(algorithm: number): string {
     case 1: return "Dilithium-2 Direct";
     case 2: return "Falcon-512 NTT";
     case 3: return "Dilithium-2 NTT";
+    case 4: return "Ephemeral ECDSA";
     default: return "Unknown";
   }
 }
@@ -132,6 +133,7 @@ export function schemeFromAlgorithm(algorithm: number): SignatureScheme {
     case 1: return "dilithium-direct";
     case 2: return "falcon-ntt";
     case 3: return "dilithium-ntt";
+    case 4: return "ephemeral-ecdsa";
     default: return "ecdsa";
   }
 }

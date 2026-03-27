@@ -61,7 +61,8 @@ export type AlgorithmType =
   | "falcon-direct"
   | "falcon-ntt"
   | "dilithium-direct"
-  | "dilithium-ntt";
+  | "dilithium-ntt"
+  | "ephemeral-ecdsa";
 
 export function algorithmDisplayName(algo: AlgorithmType): string {
   switch (algo) {
@@ -73,24 +74,32 @@ export function algorithmDisplayName(algo: AlgorithmType): string {
       return "Dilithium-2 Direct";
     case "dilithium-ntt":
       return "Dilithium-2 NTT";
+    case "ephemeral-ecdsa":
+      return "Ephemeral ECDSA";
   }
 }
 
 export function algorithmColor(algo: AlgorithmType): string {
   switch (algo) {
     case "falcon-direct":
-      return "bg-[#037DD6]";
+      return "bg-blue-700";
     case "falcon-ntt":
-      return "bg-[#0E7490]";
+      return "bg-teal-700";
     case "dilithium-direct":
-      return "bg-[#7B61FF]";
+      return "bg-violet-700";
     case "dilithium-ntt":
-      return "bg-[#9333EA]";
+      return "bg-fuchsia-700";
+    case "ephemeral-ecdsa":
+      return "bg-amber-800";
   }
 }
 
 export function isFalcon(algo: AlgorithmType): boolean {
   return algo.startsWith("falcon");
+}
+
+export function isEphemeralECDSA(algo: AlgorithmType): boolean {
+  return algo === "ephemeral-ecdsa";
 }
 
 export function fingerprint(publicKey: Uint8Array): string {

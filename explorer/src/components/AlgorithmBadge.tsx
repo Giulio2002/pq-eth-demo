@@ -7,6 +7,7 @@ export type SchemeType =
   | "falcon-ntt"
   | "dilithium-direct"
   | "dilithium-ntt"
+  | "ephemeral-ecdsa"
   | "ecdsa"
   | "7702";
 
@@ -43,6 +44,12 @@ const SCHEME_CONFIG: Record<
     bgColor: "bg-pink-100",
     textColor: "text-pink-700",
   },
+  "ephemeral-ecdsa": {
+    label: "Ephemeral ECDSA",
+    subLabel: "Key Rotation",
+    bgColor: "bg-amber-700",
+    textColor: "text-white",
+  },
   ecdsa: {
     label: "ECDSA",
     bgColor: "bg-gray-100",
@@ -61,6 +68,7 @@ function normalizeScheme(scheme: string): SchemeType {
   if (s === "falcon-ntt" || s === "falcon_ntt" || s === "2") return "falcon-ntt";
   if (s === "dilithium-direct" || s === "dilithium_direct" || s === "dilithium" || s === "1") return "dilithium-direct";
   if (s === "dilithium-ntt" || s === "dilithium_ntt" || s === "3") return "dilithium-ntt";
+  if (s === "ephemeral-ecdsa" || s === "ephemeral_ecdsa" || s === "4") return "ephemeral-ecdsa";
   if (s === "7702" || s === "7702-migration" || s === "eip-7702") return "7702";
   return "ecdsa";
 }

@@ -32,7 +32,7 @@ abstract contract PQWalletBase {
 
     function execute(
         address to, uint256 value, bytes calldata data, bytes calldata signature
-    ) external {
+    ) external virtual {
         require(initialized, "Not initialized");
         require(msg.sender == payer, "Only payer");
 
@@ -49,7 +49,7 @@ abstract contract PQWalletBase {
     function executeBatch(
         address[] calldata targets, uint256[] calldata values,
         bytes[] calldata datas, bytes calldata signature
-    ) external {
+    ) external virtual {
         require(initialized, "Not initialized");
         require(msg.sender == payer, "Only payer");
         require(targets.length == values.length && values.length == datas.length, "Length mismatch");

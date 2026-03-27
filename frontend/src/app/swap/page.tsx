@@ -11,13 +11,15 @@ import {
   getPoolPrice,
   getAssets,
 } from "@/lib/api";
-import { initPQ, sign } from "@/lib/pq";
+import { initPQ, sign, generateECDSAKeypair, ecdsaSignWithRotation } from "@/lib/pq";
+import { saveWallet } from "@/lib/wallet-store";
 import {
   hexToBytes,
   bytesToHex,
   ethToWei,
   weiToEth,
   formatUsd,
+  isEphemeralECDSA,
   type AlgorithmType,
 } from "@/lib/utils";
 
@@ -93,25 +95,37 @@ export default function SwapPage() {
     try {
       const weiAmountIn = ethToWei(amountIn);
       const weiMinOut = ethToWei(minAmountOut);
+      const algo = wallet.algorithm as AlgorithmType;
 
-      // Step 1: Get message hash from backend
-      const { messageHash } = await getSwapMessage(
-        wallet.walletAddress,
-        direction,
-        weiAmountIn,
-        weiMinOut
-      );
+      let signature: Uint8Array;
 
-      // Step 2: Sign message hash with PQ private key (browser-only)
-      const msgBytes = hexToBytes(messageHash);
-      const skBytes = hexToBytes(wallet.secretKey);
-      const signature = sign(
-        wallet.algorithm as AlgorithmType,
-        skBytes,
-        msgBytes
-      );
+      if (isEphemeralECDSA(algo)) {
+        const nextKey = generateECDSAKeypair();
+        const nextSignerHex = bytesToHex(nextKey.publicKey);
 
-      // Step 3: Send signed swap via backend
+        const { messageHash } = await getSwapMessage(
+          wallet.walletAddress, direction, weiAmountIn, weiMinOut, nextSignerHex
+        );
+
+        const msgBytes = hexToBytes(messageHash);
+        const skBytes = hexToBytes(wallet.secretKey);
+        signature = ecdsaSignWithRotation(skBytes, msgBytes, nextKey.publicKey);
+
+        await saveWallet({
+          ...wallet,
+          secretKey: bytesToHex(nextKey.secretKey),
+          publicKey: nextSignerHex,
+        });
+        setWallet({ ...wallet, secretKey: bytesToHex(nextKey.secretKey), publicKey: nextSignerHex });
+      } else {
+        const { messageHash } = await getSwapMessage(
+          wallet.walletAddress, direction, weiAmountIn, weiMinOut
+        );
+        const msgBytes = hexToBytes(messageHash);
+        const skBytes = hexToBytes(wallet.secretKey);
+        signature = sign(algo, skBytes, msgBytes);
+      }
+
       const result = await apiSwap(
         wallet.walletAddress,
         direction,

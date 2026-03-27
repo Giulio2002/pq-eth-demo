@@ -40,8 +40,9 @@ func (s *Server) handleExplorerStats(w http.ResponseWriter, r *http.Request) {
 		"falconWallets":         walletStats.Falcon,
 		"dilithiumWallets":      walletStats.Dilithium,
 		"falconTransactions":    txStats.Falcon,
-		"dilithiumTransactions": txStats.Dilithium,
-		"currentBlock":          currentBlock,
+		"dilithiumTransactions":   txStats.Dilithium,
+		"ephemeralEcdsaWallets":   walletStats.EphemeralECDSA,
+		"currentBlock":            currentBlock,
 	})
 }
 
@@ -330,6 +331,9 @@ func algorithmToScheme(alg string) string {
 	if strings.HasPrefix(alg, "dilithium") {
 		return "dilithium"
 	}
+	if strings.HasPrefix(alg, "ephemeral") {
+		return "ephemeral-ecdsa"
+	}
 	return "ecdsa"
 }
 
@@ -343,6 +347,8 @@ func algorithmToGas(alg string) int {
 		return 5000
 	case alg == "dilithium-ntt":
 		return 150000
+	case alg == "ephemeral-ecdsa":
+		return 3000 // ecrecover precompile
 	default:
 		return 0
 	}
@@ -358,6 +364,8 @@ func algorithmToPrecompile(alg string) string {
 		return "NTT verifier (composite)"
 	case strings.HasPrefix(alg, "dilithium-ntt"):
 		return "NTT verifier (composite)"
+	case alg == "ephemeral-ecdsa":
+		return "ecrecover (0x01) + key rotation"
 	default:
 		return ""
 	}

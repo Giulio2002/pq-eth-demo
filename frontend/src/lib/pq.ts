@@ -1,3 +1,5 @@
+import { secp256k1 } from "@noble/curves/secp256k1.js";
+import { keccak_256 } from "@noble/hashes/sha3.js";
 import type { AlgorithmType } from "./utils";
 
 interface PQWasmExports {
@@ -39,6 +41,10 @@ export function generateKeypair(algorithm: AlgorithmType): {
   publicKey: Uint8Array;
   secretKey: Uint8Array;
 } {
+  if (algorithm === "ephemeral-ecdsa") {
+    return generateECDSAKeypair();
+  }
+
   if (!wasmExports) throw new Error("PQ WASM not initialized. Call initPQ() first.");
 
   const isFalcon = algorithm.startsWith("falcon");
@@ -51,11 +57,73 @@ export function generateKeypair(algorithm: AlgorithmType): {
   };
 }
 
+// --- Ephemeral ECDSA ---
+
+/** Generate an ECDSA keypair. publicKey = 20-byte Ethereum address. */
+export function generateECDSAKeypair(): {
+  publicKey: Uint8Array;
+  secretKey: Uint8Array;
+} {
+  const privKey = secp256k1.utils.randomSecretKey();
+  const address = ecdsaPrivKeyToAddress(privKey);
+  return { publicKey: address, secretKey: privKey };
+}
+
+/** Derive 20-byte Ethereum address from a 32-byte private key. */
+export function ecdsaPrivKeyToAddress(privKey: Uint8Array): Uint8Array {
+  const uncompressedPub = secp256k1.getPublicKey(privKey, false);
+  // keccak256 of the 64-byte public key (skip the 0x04 prefix)
+  const hash = keccak_256(uncompressedPub.slice(1));
+  return hash.slice(-20);
+}
+
+/**
+ * Sign a 32-byte message hash with ECDSA and append nextSigner address.
+ * Returns: r(32) || s(32) || v(1) || nextSigner(20) = 85 bytes
+ */
+export function ecdsaSignWithRotation(
+  privKey: Uint8Array,
+  msgHash: Uint8Array,
+  nextSignerAddress: Uint8Array
+): Uint8Array {
+  // sign() with prehash:false since msgHash is already hashed (keccak256)
+  const compact = secp256k1.sign(msgHash, privKey, { prehash: false });
+  const expectedPub = secp256k1.getPublicKey(privKey, false);
+
+  // Determine recovery bit by trial (0 or 1)
+  let recovery = 0;
+  const sigObj = secp256k1.Signature.fromHex(
+    Array.from(compact, (b) => b.toString(16).padStart(2, "0")).join("")
+  );
+  for (const bit of [0, 1] as const) {
+    try {
+      const recovered = sigObj.addRecoveryBit(bit).recoverPublicKey(msgHash);
+      const recoveredBytes = recovered.toBytes(false);
+      if (recoveredBytes.length === expectedPub.length &&
+          recoveredBytes.every((b: number, i: number) => b === expectedPub[i])) {
+        recovery = bit;
+        break;
+      }
+    } catch {
+      // try next bit
+    }
+  }
+
+  const result = new Uint8Array(85);
+  result.set(compact, 0);
+  result[64] = recovery + 27; // v = recovery + 27
+  result.set(nextSignerAddress, 65);
+  return result;
+}
+
 export function sign(
   algorithm: AlgorithmType,
   secretKey: Uint8Array,
   message: Uint8Array
 ): Uint8Array {
+  if (algorithm === "ephemeral-ecdsa") {
+    throw new Error("Use ecdsaSignWithRotation() for ephemeral ECDSA");
+  }
   if (!wasmExports) throw new Error("PQ WASM not initialized. Call initPQ() first.");
 
   return algorithm.startsWith("falcon")
