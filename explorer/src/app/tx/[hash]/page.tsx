@@ -56,6 +56,12 @@ function getVerificationInfo(signatureScheme: string): VerificationInfo | null {
           "EXPAND_A_VECMUL (0x1a)",
         ],
       };
+    case "ephemeral-ecdsa":
+      return {
+        method: "ecrecover (0x01) + key rotation",
+        precompileAddress: "0x01 (ecrecover)",
+        gasCost: "~3,000",
+      };
     default:
       return null;
   }
@@ -281,13 +287,17 @@ export default function TransactionDetailPage() {
               <div>
                 <p className="text-sm text-[#6c757d] mb-1">Algorithm</p>
                 <p className="text-[#1a1a1a]">
-                  {tx.signatureScheme?.includes("falcon") ? "Falcon-512" : "Dilithium-2 (Dilithium)"}
+                  {tx.signatureScheme === "ephemeral-ecdsa"
+                    ? "Ephemeral ECDSA (single-use key rotation)"
+                    : tx.signatureScheme?.includes("falcon") ? "Falcon-512" : "Dilithium-2 (Dilithium)"}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-[#6c757d] mb-1">Verification Approach</p>
                 <p className="text-[#1a1a1a]">
-                  {tx.signatureScheme?.includes("ntt") ? "NTT / Lego (composite precompiles)" : "Direct (single precompile)"}
+                  {tx.signatureScheme === "ephemeral-ecdsa"
+                    ? "ECDSA with key rotation per transaction"
+                    : tx.signatureScheme?.includes("ntt") ? "NTT / Lego (composite precompiles)" : "Direct (single precompile)"}
                 </p>
               </div>
               <div>
@@ -302,7 +312,9 @@ export default function TransactionDetailPage() {
 
             {tx.publicKey && (
               <div className="border-t border-[#e7eaf3] pt-4">
-                <p className="text-sm text-[#6c757d] mb-1">Public Key</p>
+                <p className="text-sm text-[#6c757d] mb-1">
+                  {tx.signatureScheme === "ephemeral-ecdsa" ? "Signer Address (ephemeral)" : "Public Key"}
+                </p>
                 <div className="flex items-center gap-2">
                   <p className="text-[#1a1a1a] font-mono text-xs break-all bg-[#F8F9FA] border border-[#e7eaf3] rounded p-2 flex-1">
                     {tx.publicKey}

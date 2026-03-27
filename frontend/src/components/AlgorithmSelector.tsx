@@ -49,6 +49,15 @@ const algorithms: AlgorithmOption[] = [
     description:
       "Composes NTT, ExpandA, vector arithmetic precompiles step-by-step. Each verification step is individually visible on-chain.",
   },
+  {
+    id: "ephemeral-ecdsa",
+    name: "Ephemeral ECDSA",
+    approach: "Key rotation",
+    gasCost: "~3,000",
+    tradeoff: "No PQ crypto needed, key rotates every tx",
+    description:
+      "Each ECDSA key is single-use. Every transaction rotates to a new signer, making the exposed public key immediately useless. Quantum-safe without post-quantum primitives.",
+  },
 ];
 
 interface AlgorithmSelectorProps {
@@ -91,14 +100,14 @@ export default function AlgorithmSelector({
                     <span
                       className={`${algorithmColor(algo.id)} text-white text-xs font-semibold px-2 py-0.5 rounded-full shadow-sm`}
                     >
-                      {algo.approach === "Lego (composite)" ? "Lego" : "Direct"}
+                      {algo.approach === "Lego (composite)" ? "Lego" : algo.approach === "Key rotation" ? "Ephemeral" : "Direct"}
                     </span>
                     <span className="font-medium text-gray-900">{algo.name}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-gray-600">{algo.approach}</td>
-                <td className="px-4 py-3 font-mono text-gray-700">{algo.gasCost}</td>
-                <td className="px-4 py-3 text-gray-600">{algo.tradeoff}</td>
+                <td className="px-4 py-3 text-gray-800">{algo.approach}</td>
+                <td className="px-4 py-3 font-mono text-gray-900">{algo.gasCost}</td>
+                <td className="px-4 py-3 text-gray-800">{algo.tradeoff}</td>
               </tr>
             ))}
           </tbody>
@@ -132,8 +141,8 @@ export default function AlgorithmSelector({
                 </svg>
               )}
             </div>
-            <p className="text-sm text-gray-600 leading-relaxed">{algo.description}</p>
-            <p className="text-xs text-gray-400 mt-2 font-medium">
+            <p className="text-sm text-gray-800 leading-relaxed">{algo.description}</p>
+            <p className="text-xs text-gray-600 mt-2 font-semibold">
               Gas: {algo.gasCost}
             </p>
           </button>

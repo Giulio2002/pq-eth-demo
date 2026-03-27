@@ -11,6 +11,7 @@ import {
   fingerprint,
   algorithmDisplayName,
   algorithmColor,
+  isEphemeralECDSA,
   type AlgorithmType,
 } from "@/lib/utils";
 
@@ -32,6 +33,9 @@ export default function CreateWallet() {
       .then(() => setPqReady(true))
       .catch((err) => setPqError(`Failed to load PQ module: ${err.message}`));
   }, []);
+
+  // Ephemeral ECDSA doesn't need WASM
+  const readyToGenerate = algorithm ? (isEphemeralECDSA(algorithm) || pqReady) : false;
 
   function handleGenerateKeypair() {
     if (!algorithm) return;
@@ -117,10 +121,10 @@ export default function CreateWallet() {
           {algorithm && (
             <button
               onClick={handleGenerateKeypair}
-              disabled={!pqReady}
+              disabled={!readyToGenerate}
               className="w-full py-3 rounded-xl bg-[#037DD6] hover:bg-[#0260A4] disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold transition-colors"
             >
-              {pqReady ? "Generate Keypair" : "Loading PQ module..."}
+              {readyToGenerate ? "Generate Keypair" : "Loading PQ module..."}
             </button>
           )}
         </div>

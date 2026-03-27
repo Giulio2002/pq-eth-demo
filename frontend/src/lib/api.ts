@@ -74,11 +74,14 @@ export async function getExecuteMessage(
   wallet: string,
   to: string,
   value: string,
-  data: string
+  data: string,
+  nextSigner?: string
 ): Promise<ExecuteMessageResponse> {
+  const body: Record<string, string> = { wallet, to, value, data };
+  if (nextSigner) body.nextSigner = nextSigner;
   return apiFetch("/api/wallet/execute-message", {
     method: "POST",
-    body: JSON.stringify({ wallet, to, value, data }),
+    body: JSON.stringify(body),
   });
 }
 
@@ -107,11 +110,14 @@ export async function getSwapMessage(
   wallet: string,
   direction: string,
   amountIn: string,
-  minAmountOut: string
+  minAmountOut: string,
+  nextSigner?: string
 ): Promise<SwapMessageResponse> {
+  const body: Record<string, string> = { wallet, direction, amountIn, minAmountOut };
+  if (nextSigner) body.nextSigner = nextSigner;
   return apiFetch("/api/wallet/swap-message", {
     method: "POST",
-    body: JSON.stringify({ wallet, direction, amountIn, minAmountOut }),
+    body: JSON.stringify(body),
   });
 }
 

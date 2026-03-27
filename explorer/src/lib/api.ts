@@ -122,6 +122,9 @@ function mapRawWallet(raw: RawWallet): ExplorerWallet {
   } else if (raw.algorithm === "dilithium-ntt") {
     algoNum = 3;
     scheme = "dilithium-ntt";
+  } else if (raw.algorithm === "ephemeral-ecdsa") {
+    algoNum = 4;
+    scheme = "ephemeral-ecdsa";
   }
   return {
     address: raw.address,
@@ -167,6 +170,9 @@ function inferScheme(scheme: string, verificationGas: number): string {
   }
   if (scheme === "dilithium") {
     return verificationGas >= 150000 ? "dilithium-ntt" : "dilithium-direct";
+  }
+  if (scheme === "ephemeral-ecdsa") {
+    return "ephemeral-ecdsa";
   }
   // Already fully qualified or unknown
   return scheme;
@@ -312,6 +318,7 @@ export async function getAddress(address: string): Promise<ExplorerAddress | nul
     else if (alg === "falcon-ntt") { algoNum = 2; scheme = "falcon-ntt"; }
     else if (alg === "dilithium" || alg === "dilithium-direct") { algoNum = 1; scheme = "dilithium-direct"; }
     else if (alg === "dilithium-ntt") { algoNum = 3; scheme = "dilithium-ntt"; }
+    else if (alg === "ephemeral-ecdsa") { algoNum = 4; scheme = "ephemeral-ecdsa"; }
 
     wallet = {
       address: raw.address,

@@ -17,10 +17,11 @@ import (
 )
 
 type executeMessageRequest struct {
-	Wallet string `json:"wallet"`
-	To     string `json:"to"`
-	Value  string `json:"value"`
-	Data   string `json:"data"`
+	Wallet     string `json:"wallet"`
+	To         string `json:"to"`
+	Value      string `json:"value"`
+	Data       string `json:"data"`
+	NextSigner string `json:"nextSigner,omitempty"` // ephemeral ECDSA: next signer address
 }
 
 type swapMessageRequest struct {
@@ -28,6 +29,7 @@ type swapMessageRequest struct {
 	Direction    string `json:"direction"`
 	AmountIn     string `json:"amountIn"`
 	MinAmountOut string `json:"minAmountOut"`
+	NextSigner   string `json:"nextSigner,omitempty"` // ephemeral ECDSA: next signer address
 }
 
 type messageResponse struct {
@@ -79,7 +81,15 @@ func (s *Server) handleExecuteMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	chainID := s.chain.ChainID()
-	msgHash := computeExecuteMessageHash(to, value, dataBytes, nonce, chainID)
+
+	var msgHash []byte
+	if req.NextSigner != "" {
+		// Ephemeral ECDSA: hash includes nextSigner
+		nextSigner := common.HexToAddress(req.NextSigner)
+		msgHash = computeEphemeralExecuteMessageHash(to, value, dataBytes, nonce, chainID, nextSigner)
+	} else {
+		msgHash = computeExecuteMessageHash(to, value, dataBytes, nonce, chainID)
+	}
 
 	writeJSON(w, http.StatusOK, messageResponse{
 		MessageHash: "0x" + common.Bytes2Hex(msgHash),
@@ -130,7 +140,14 @@ func (s *Server) handleSwapMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	chainID := s.chain.ChainID()
-	msgHash := computeBatchMessageHash(targets, values, datas, nonce, chainID)
+
+	var msgHash []byte
+	if req.NextSigner != "" {
+		nextSigner := common.HexToAddress(req.NextSigner)
+		msgHash = computeEphemeralBatchMessageHash(targets, values, datas, nonce, chainID, nextSigner)
+	} else {
+		msgHash = computeBatchMessageHash(targets, values, datas, nonce, chainID)
+	}
 
 	writeJSON(w, http.StatusOK, messageResponse{
 		MessageHash: "0x" + common.Bytes2Hex(msgHash),
@@ -183,6 +200,45 @@ func computeBatchMessageHash(targets []common.Address, values []*big.Int, datas 
 	encoded, err := args.Pack(targets, values, datas, new(big.Int).SetUint64(nonce), chainID)
 	if err != nil {
 		// This shouldn't happen with valid inputs
+		return crypto.Keccak256([]byte("error"))
+	}
+
+	return crypto.Keccak256(encoded)
+}
+
+// computeEphemeralExecuteMessageHash adds nextSigner to the hash for ephemeral ECDSA wallets.
+// keccak256(abi.encodePacked(to, value, data, nonce, chainId, nextSigner))
+func computeEphemeralExecuteMessageHash(to common.Address, value *big.Int, data []byte, nonce uint64, chainID *big.Int, nextSigner common.Address) []byte {
+	packed := make([]byte, 0, 20+32+len(data)+32+32+20)
+	packed = append(packed, to.Bytes()...)
+	packed = append(packed, common.LeftPadBytes(value.Bytes(), 32)...)
+	packed = append(packed, data...)
+	packed = append(packed, common.LeftPadBytes(new(big.Int).SetUint64(nonce).Bytes(), 32)...)
+	packed = append(packed, common.LeftPadBytes(chainID.Bytes(), 32)...)
+	packed = append(packed, nextSigner.Bytes()...)
+	return crypto.Keccak256(packed)
+}
+
+// computeEphemeralBatchMessageHash adds nextSigner to the batch hash for ephemeral ECDSA wallets.
+// keccak256(abi.encode(targets, values, datas, nonce, chainId, nextSigner))
+func computeEphemeralBatchMessageHash(targets []common.Address, values []*big.Int, datas [][]byte, nonce uint64, chainID *big.Int, nextSigner common.Address) []byte {
+	addressArrayTy, _ := abi.NewType("address[]", "", nil)
+	uint256ArrayTy, _ := abi.NewType("uint256[]", "", nil)
+	bytesArrayTy, _ := abi.NewType("bytes[]", "", nil)
+	uint256Ty, _ := abi.NewType("uint256", "", nil)
+	addressTy, _ := abi.NewType("address", "", nil)
+
+	args := abi.Arguments{
+		{Type: addressArrayTy},
+		{Type: uint256ArrayTy},
+		{Type: bytesArrayTy},
+		{Type: uint256Ty},
+		{Type: uint256Ty},
+		{Type: addressTy},
+	}
+
+	encoded, err := args.Pack(targets, values, datas, new(big.Int).SetUint64(nonce), chainID, nextSigner)
+	if err != nil {
 		return crypto.Keccak256([]byte("error"))
 	}
 

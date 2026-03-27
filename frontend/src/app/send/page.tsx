@@ -6,13 +6,15 @@ import WalletHeader from "@/components/WalletHeader";
 import AmountInput from "@/components/AmountInput";
 import { getPrimaryWallet, type StoredWallet } from "@/lib/wallet-store";
 import { getExecuteMessage, execute, getPoolPrice, getAssets } from "@/lib/api";
-import { initPQ, sign } from "@/lib/pq";
+import { initPQ, sign, generateECDSAKeypair, ecdsaSignWithRotation, ecdsaPrivKeyToAddress } from "@/lib/pq";
+import { saveWallet } from "@/lib/wallet-store";
 import {
   hexToBytes,
   bytesToHex,
   ethToWei,
   weiToEth,
   formatUsd,
+  isEphemeralECDSA,
   type AlgorithmType,
 } from "@/lib/utils";
 
@@ -68,25 +70,40 @@ export default function SendPage() {
 
     try {
       const weiValue = ethToWei(amount);
+      const algo = wallet.algorithm as AlgorithmType;
 
-      // Step 1: Get message hash from backend
-      const { messageHash } = await getExecuteMessage(
-        wallet.walletAddress,
-        recipient,
-        weiValue,
-        "0x"
-      );
+      let signature: Uint8Array;
 
-      // Step 2: Sign message hash with PQ private key (browser-only)
-      const msgBytes = hexToBytes(messageHash);
-      const skBytes = hexToBytes(wallet.secretKey);
-      const signature = sign(
-        wallet.algorithm as AlgorithmType,
-        skBytes,
-        msgBytes
-      );
+      if (isEphemeralECDSA(algo)) {
+        // Ephemeral ECDSA: generate next key, include in hash, sign, rotate
+        const nextKey = generateECDSAKeypair();
+        const nextSignerHex = bytesToHex(nextKey.publicKey);
 
-      // Step 3: Send signed transaction via backend
+        const { messageHash } = await getExecuteMessage(
+          wallet.walletAddress, recipient, weiValue, "0x", nextSignerHex
+        );
+
+        const msgBytes = hexToBytes(messageHash);
+        const skBytes = hexToBytes(wallet.secretKey);
+        signature = ecdsaSignWithRotation(skBytes, msgBytes, nextKey.publicKey);
+
+        // Rotate: update stored wallet with next key
+        await saveWallet({
+          ...wallet,
+          secretKey: bytesToHex(nextKey.secretKey),
+          publicKey: nextSignerHex,
+        });
+        setWallet({ ...wallet, secretKey: bytesToHex(nextKey.secretKey), publicKey: nextSignerHex });
+      } else {
+        const { messageHash } = await getExecuteMessage(
+          wallet.walletAddress, recipient, weiValue, "0x"
+        );
+        const msgBytes = hexToBytes(messageHash);
+        const skBytes = hexToBytes(wallet.secretKey);
+        signature = sign(algo, skBytes, msgBytes);
+      }
+
+      // Send signed transaction via backend
       const result = await execute(
         wallet.walletAddress,
         recipient,

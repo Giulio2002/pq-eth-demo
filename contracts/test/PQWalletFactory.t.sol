@@ -47,6 +47,13 @@ contract PQWalletFactoryTest is Test {
         assertEq(PQWalletBase(payable(w)).algorithm(), 3);
     }
 
+    function test_createEphemeralECDSA() public {
+        bytes memory ephPk = abi.encodePacked(address(0xABCD));
+        address w = factory.createWallet(ephPk, "", 4, payer);
+        assertEq(PQWalletBase(payable(w)).algorithm(), 4);
+        assertTrue(PQWalletBase(payable(w)).initialized());
+    }
+
     function test_multipleWallets() public {
         address w1 = factory.createWallet(falconPk, falconVk, 0, payer);
         address w2 = factory.createWallet(falconPk, falconVk, 0, payer);

@@ -52,9 +52,10 @@ func (db *DB) GetWallet(address string) (*Wallet, error) {
 
 // WalletStats holds aggregate wallet counts.
 type WalletStats struct {
-	Total     int
-	Falcon    int
-	Dilithium int
+	Total          int
+	Falcon         int
+	Dilithium      int
+	EphemeralECDSA int
 }
 
 // GetWalletStats returns aggregate wallet counts.
@@ -69,6 +70,10 @@ func (db *DB) GetWalletStats() (*WalletStats, error) {
 		return nil, err
 	}
 	err = db.conn.QueryRow(`SELECT COUNT(*) FROM wallets WHERE algorithm LIKE 'dilithium%'`).Scan(&stats.Dilithium)
+	if err != nil {
+		return nil, err
+	}
+	err = db.conn.QueryRow(`SELECT COUNT(*) FROM wallets WHERE algorithm LIKE 'ephemeral%'`).Scan(&stats.EphemeralECDSA)
 	if err != nil {
 		return nil, err
 	}

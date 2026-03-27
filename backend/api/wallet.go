@@ -50,9 +50,14 @@ func (s *Server) handleCreateWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expectedSize := 897
-	if algBase == "dilithium" {
+	var expectedSize int
+	switch algBase {
+	case "falcon":
+		expectedSize = 897
+	case "dilithium":
 		expectedSize = 1312
+	case "ecdsa":
+		expectedSize = 20 // ephemeral ECDSA: publicKey is the initial signer address
 	}
 	if len(pubKeyBytes) != expectedSize {
 		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid public key size: got %d bytes, expected %d for %s", len(pubKeyBytes), expectedSize, algBase))
@@ -66,14 +71,17 @@ func (s *Server) handleCreateWallet(w http.ResponseWriter, r *http.Request) {
 	// - Falcon (0,2): NTT-domain h via precompile 0x12 (1024 bytes)
 	// - Dilithium (1,3): same as publicKey (1312 bytes)
 	var verifyKeyBytes []byte
-	if algBase == "falcon" {
+	switch algBase {
+	case "falcon":
 		verifyKeyBytes, err = s.chain.ComputeFalconVerifyKey(ctx, pubKeyBytes)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to compute falcon verify key: "+err.Error())
 			return
 		}
 		log.Printf("computed falcon NTT verifyKey: %d bytes", len(verifyKeyBytes))
-	} else {
+	case "ecdsa":
+		verifyKeyBytes = []byte{} // ephemeral ECDSA: no verify key needed
+	default:
 		verifyKeyBytes = pubKeyBytes // Dilithium: verifyKey == publicKey
 	}
 
@@ -284,8 +292,10 @@ func parseAlgorithm(alg string) (uint8, string, error) {
 		return 2, "falcon", nil
 	case "dilithium-ntt":
 		return 3, "dilithium", nil
+	case "ephemeral-ecdsa":
+		return 4, "ecdsa", nil
 	default:
-		return 0, "", fmt.Errorf("unknown algorithm: %s (expected: falcon-direct, dilithium-direct, falcon-ntt, dilithium-ntt)", alg)
+		return 0, "", fmt.Errorf("unknown algorithm: %s (expected: falcon-direct, dilithium-direct, falcon-ntt, dilithium-ntt, ephemeral-ecdsa)", alg)
 	}
 }
 
@@ -296,6 +306,9 @@ func algorithmBase(alg string) string {
 	}
 	if strings.HasPrefix(alg, "dilithium") {
 		return "dilithium"
+	}
+	if strings.HasPrefix(alg, "ephemeral") {
+		return "ephemeral-ecdsa"
 	}
 	return alg
 }
