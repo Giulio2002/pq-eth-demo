@@ -85,6 +85,7 @@ export default function TransactionDetailPage() {
   const [ethPrice, setEthPrice] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [inputExpanded, setInputExpanded] = useState(false);
+  const [ephemeralSigner, setEphemeralSigner] = useState<{ old: string; new: string } | null>(null);
 
   useEffect(() => {
     async function fetchTx() {
@@ -123,6 +124,28 @@ export default function TransactionDetailPage() {
 
       const price = await getPoolPrice();
       setEthPrice(price);
+
+      // For ephemeral ECDSA: parse SignerRotated event from receipt logs
+      try {
+        const receipt = await getTransactionReceipt(hash);
+        if (receipt?.logs) {
+          // SignerRotated topic0 = keccak256("SignerRotated(address,address,uint256)")
+          // = 0xd65d633374a6d8ba4be31604bbe809d88b4a7955bc676e04b23c64150d0a29f0
+          const SIGNER_ROTATED = "0xd65d633374a6d8ba4be31604bbe809d88b4a7955bc676e04b23c64150d0a29f0";
+          for (const log of receipt.logs) {
+            const l = log as { topics?: string[] };
+            if (l.topics && l.topics[0] === SIGNER_ROTATED && l.topics.length >= 3) {
+              setEphemeralSigner({
+                old: "0x" + l.topics[1].slice(26),
+                new: "0x" + l.topics[2].slice(26),
+              });
+              break;
+            }
+          }
+        }
+      } catch {}
+
+
       setLoading(false);
     }
     fetchTx();
@@ -309,6 +332,32 @@ export default function TransactionDetailPage() {
                 <p className="text-[#1a1a1a] font-mono text-sm">{verificationInfo.precompileAddress}</p>
               </div>
             </div>
+
+            {tx.signatureScheme === "ephemeral-ecdsa" && ephemeralSigner && (
+              <div className="border-t border-[#e7eaf3] pt-4">
+                <p className="text-sm text-[#6c757d] mb-2">Key Rotation</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-[#6c757d] mb-1">Signer (used for this tx)</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[#1a1a1a] font-mono text-xs bg-[#F8F9FA] border border-[#e7eaf3] rounded p-2 flex-1 break-all">
+                        {ephemeralSigner.old}
+                      </p>
+                      <CopyButton text={ephemeralSigner.old} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-[#6c757d] mb-1">Next signer (rotated to)</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[#1a1a1a] font-mono text-xs bg-[#F8F9FA] border border-[#e7eaf3] rounded p-2 flex-1 break-all">
+                        {ephemeralSigner.new}
+                      </p>
+                      <CopyButton text={ephemeralSigner.new} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {tx.publicKey && tx.signatureScheme !== "ephemeral-ecdsa" && (
               <div className="border-t border-[#e7eaf3] pt-4">
