@@ -28,23 +28,23 @@ contract FalconDirectWallet is PQWalletBase {
                 revert(0x00, 0x64)
             }
 
-            // Write precompile input directly at offset 0 — no need to read free memory pointer.
-            // Return value is on the stack so clobbering Solidity scratch space is fine.
+            // Allocate 2120 bytes for precompile input at free memory pointer
+            let input := mload(0x40)
 
             // 1. Copy s2 (1024 bytes from calldata signature)
-            calldatacopy(0x00, signature.offset, 1024)
+            calldatacopy(input, signature.offset, 1024)
 
             // 2. Copy ntth (1024 bytes from SSTORE2 pointer via EXTCODECOPY, skip 1-byte STOP prefix)
-            extcodecopy(vkPtr, 1024, 1, 1024)
+            extcodecopy(vkPtr, add(input, 1024), 1, 1024)
 
             // 3. Copy nonce (40 bytes from calldata signature offset 1024)
-            calldatacopy(2048, add(signature.offset, 1024), 40)
+            calldatacopy(add(input, 2048), add(signature.offset, 1024), 40)
 
             // 4. Store msgHash (32 bytes)
-            mstore(2088, msgHash)
+            mstore(add(input, 2088), msgHash)
 
-            // staticcall precompile 0x17 — input at 0, output overwrites start (safe: input is buffered by the call)
-            let ok := staticcall(gas(), 0x17, 0x00, 2120, 0x00, 0x20)
+            // staticcall precompile 0x17
+            let ok := staticcall(gas(), 0x17, input, 2120, 0x00, 0x20)
 
             valid := and(ok, eq(mload(0x00), 1))
         }
