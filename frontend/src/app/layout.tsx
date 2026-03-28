@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import WalletSelector from "@/components/WalletSelector";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -50,6 +51,7 @@ export default function RootLayout({
               >
                 Settings
               </Link>
+              <WalletSelector />
             </div>
           </div>
         </nav>

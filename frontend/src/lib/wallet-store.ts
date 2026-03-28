@@ -46,7 +46,34 @@ export async function deleteWallet(address: string): Promise<void> {
   await db.delete(STORE_NAME, address);
 }
 
-export async function getPrimaryWallet(): Promise<StoredWallet | undefined> {
+export const MAX_WALLETS = 3;
+
+const ACTIVE_KEY = "pq-active-wallet";
+
+export function getActiveAddress(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(ACTIVE_KEY);
+}
+
+export function setActiveAddress(address: string): void {
+  localStorage.setItem(ACTIVE_KEY, address);
+}
+
+export async function getActiveWallet(): Promise<StoredWallet | undefined> {
+  const addr = getActiveAddress();
+  if (addr) {
+    const w = await getWallet(addr);
+    if (w) return w;
+  }
+  // Fallback to first wallet
   const wallets = await getAllWallets();
-  return wallets.length > 0 ? wallets[0] : undefined;
+  if (wallets.length > 0) {
+    setActiveAddress(wallets[0].walletAddress);
+    return wallets[0];
+  }
+  return undefined;
+}
+
+export async function getPrimaryWallet(): Promise<StoredWallet | undefined> {
+  return getActiveWallet();
 }

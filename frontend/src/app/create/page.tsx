@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import AlgorithmSelector from "@/components/AlgorithmSelector";
 import { initPQ, generateKeypair, isPQReady, deriveEphemeralAddress, EPHEMERAL_KEY_COUNT } from "@/lib/pq";
 import { createWallet } from "@/lib/api";
-import { saveWallet } from "@/lib/wallet-store";
+import { saveWallet, setActiveAddress, getAllWallets, MAX_WALLETS } from "@/lib/wallet-store";
 import {
   bytesToHex,
   fingerprint,
@@ -27,11 +27,18 @@ export default function CreateWallet() {
   const [secretKey, setSecretKey] = useState<Uint8Array | null>(null);
   const [deploying, setDeploying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [walletCount, setWalletCount] = useState(0);
 
   useEffect(() => {
     initPQ()
       .then(() => setPqReady(true))
       .catch((err) => setPqError(`Failed to load PQ module: ${err.message}`));
+    getAllWallets().then((ws) => {
+      setWalletCount(ws.length);
+      if (ws.length >= MAX_WALLETS) {
+        setError(`Maximum ${MAX_WALLETS} wallets reached. Delete one in Settings first.`);
+      }
+    });
   }, []);
 
   // Ephemeral ECDSA doesn't need WASM
@@ -63,6 +70,7 @@ export default function CreateWallet() {
         ephemeralIndex: isEphemeralECDSA(algorithm) ? 0 : undefined,
         createdAt: new Date().toISOString(),
       });
+      setActiveAddress(res.walletAddress);
       setStep("done");
       setTimeout(() => router.push("/"), 1500);
     } catch (err) {

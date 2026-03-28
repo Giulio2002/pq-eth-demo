@@ -72,7 +72,7 @@ export default function Dashboard() {
         balance={ethBalance}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Link
           href="/send"
           className="bg-white rounded-2xl p-6 border border-gray-200 hover:border-[#037DD6] hover:shadow-card-hover transition-all group"
@@ -107,6 +107,24 @@ export default function Dashboard() {
           </div>
           <p className="text-sm text-gray-500">
             Trade ETH for USD on Uniswap V3 with PQ security
+          </p>
+        </Link>
+        <Link
+          href="/create"
+          className="bg-white rounded-2xl p-6 border border-gray-200 border-dashed hover:border-gray-400 hover:shadow-card-hover transition-all group"
+        >
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+              <svg className="w-5 h-5 text-gray-400 group-hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <h3 className="text-base font-semibold text-gray-400 group-hover:text-gray-600 transition-colors">
+              Add Wallet
+            </h3>
+          </div>
+          <p className="text-sm text-gray-400">
+            Create another PQ wallet (up to 3)
           </p>
         </Link>
       </div>
