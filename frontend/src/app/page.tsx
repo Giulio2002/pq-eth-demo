@@ -115,6 +115,7 @@ export default function Dashboard() {
         eth={ethBalance}
         weth={assets ? weiToEth(assets.weth) : "0.0000"}
         usd={assets ? weiToEth(assets.usd) : "0.00"}
+        jedkh={assets?.jedkh ? weiToEth(assets.jedkh) : "0.0000"}
         ethPrice={ethPrice}
       />
 

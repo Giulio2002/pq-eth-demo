@@ -4,10 +4,11 @@ interface AssetListProps {
   eth: string;
   weth: string;
   usd: string;
+  jedkh?: string;
   ethPrice?: number;
 }
 
-export default function AssetList({ eth, weth, usd, ethPrice }: AssetListProps) {
+export default function AssetList({ eth, weth, usd, jedkh, ethPrice }: AssetListProps) {
   const ethVal = parseFloat(eth);
   const wethVal = parseFloat(weth);
   const usdVal = parseFloat(usd);
@@ -69,6 +70,20 @@ export default function AssetList({ eth, weth, usd, ethPrice }: AssetListProps) 
           <div className="text-right">
             <p className="text-sm font-semibold text-gray-900 font-mono">{usdVal.toFixed(2)}</p>
             <p className="text-xs text-gray-500">${usdVal.toFixed(2)}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between py-3 px-3 rounded-xl hover:bg-gray-50 transition-colors">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-amber-800 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm">JE</div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">JEDKH</p>
+              <p className="text-xs text-gray-500">JeffreyEpsteinDidntKillHimself</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-semibold text-gray-900 font-mono">{parseFloat(jedkh || "0").toFixed(4)}</p>
+            {ethPrice && <p className="text-xs text-gray-500">${(parseFloat(jedkh || "0") * 0.5 * ethPrice).toFixed(2)}</p>}
           </div>
         </div>
       </div>

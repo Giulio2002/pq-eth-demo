@@ -134,12 +134,31 @@ cast send "$FACTORY" "createPool(address,address,uint24)" "$WETH9" "$USD" 3000 \
 POOL=$(cast call "$FACTORY" "getPool(address,address,uint24)(address)" "$WETH9" "$USD" 3000 --rpc-url "$RPC")
 echo "[deploy] ETH_USD_Pool: $POOL"
 
-# ── Step 9: Update deployments.json ──
+# ── Step 9: Deploy MockSwapper ──
+echo "[deploy] Deploying MockSwapper..."
+USD=$(python3 -c "import json; print(json.load(open('deployments.json'))['USD'])")
+JEDKH=$(python3 -c "import json; print(json.load(open('deployments.json'))['JEDKH'])")
+SWAPPER_BYTECODE=$(python3 -c "import json; print(json.load(open('out/MockSwapper.sol/MockSwapper.json'))['bytecode']['object'])")
+SWAPPER_ARGS=$(cast abi-encode "constructor(address,address,address)" "$WETH9" "$USD" "$JEDKH" | sed 's/^0x//')
+MOCK_SWAPPER=$(deploy_bytecode_with_args "$SWAPPER_BYTECODE" "$SWAPPER_ARGS" "MockSwapper")
+
+# ── Step 10: Fund MockSwapper with reserves ──
+echo "[deploy] Funding MockSwapper with reserves..."
+cast send "$WETH9" "deposit()" --value 200ether --rpc-url "$RPC" --private-key "$KEY" --legacy > /dev/null
+cast send "$WETH9" "transfer(address,uint256)" "$MOCK_SWAPPER" $(cast to-wei 200) --rpc-url "$RPC" --private-key "$KEY" --legacy > /dev/null
+echo "[deploy] Sent 200 WETH to MockSwapper"
+cast send "$USD" "transfer(address,uint256)" "$MOCK_SWAPPER" $(cast to-wei 400000) --rpc-url "$RPC" --private-key "$KEY" --legacy > /dev/null
+echo "[deploy] Sent 400,000 USD to MockSwapper"
+cast send "$JEDKH" "transfer(address,uint256)" "$MOCK_SWAPPER" $(cast to-wei 400000) --rpc-url "$RPC" --private-key "$KEY" --legacy > /dev/null
+echo "[deploy] Sent 400,000 JEDKH to MockSwapper"
+
+# ── Step 11: Update deployments.json ──
 echo "[deploy] Updating deployments.json..."
 python3 << PYEOF
 import json
 d = json.load(open('deployments.json'))
 d['WETH9'] = '$WETH9'
+d['MockSwapper'] = '$MOCK_SWAPPER'
 d['UniswapV3Factory'] = '$FACTORY'
 d['SwapRouter'] = '$SWAP_ROUTER'
 d['NonfungiblePositionManager'] = '$NFT_MANAGER'
@@ -147,17 +166,9 @@ d['QuoterV2'] = '$QUOTER'
 d['ETH_USD_Pool'] = '$POOL'
 d['payerAddress'] = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
 json.dump(d, open('deployments.json', 'w'), indent=2)
-# Also write to repo root
 json.dump(d, open('$REPO_ROOT/deployments.json', 'w'), indent=2)
 print('deployments.json updated.')
 PYEOF
-
-# ── Step 10: Seed pool liquidity ──
-echo "[deploy] Seeding ETH-USD pool liquidity..."
-forge script script/SeedPool.s.sol:SeedPool \
-  --rpc-url "$RPC" --private-key "$KEY" --broadcast --legacy || {
-    echo "[deploy] WARNING: SeedPool script failed. Pool may need manual seeding."
-}
 
 echo "[deploy] Done."
 cat "$REPO_ROOT/deployments.json"

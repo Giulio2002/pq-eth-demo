@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import "forge-std/Script.sol";
 import "../src/PQWalletFactory.sol";
 import "../src/USD.sol";
+import "../src/JEDKH.sol";
 
 contract Deploy is Script {
     bytes constant FALCON_NTT_BYTECODE = hex"610400610145806100145f39815f8237015ff3fe61040061100081360382803803610c00396101005f528260205280836040376040015f60165afa15610141576102005f5261300160205260316040526104005f6060376104005f6104608160125afa1561013d576104005f60405e6102005f52613001602052610400610c006104405e6104005f6108408160145afa15610139576104005f60605e6102005f5261300160205260316040526104005f6104608160135afa156101355761020061140052613001611420526104006110006114405e6104005f6118405e6104006114006108408160195afa1561013157613001611800526102006118205263020754266118405260026118605260026118805260026118a0526104006114006118c05e6104005f611cc03760205f6108c061180060185afa1561012d5760205ff35b5f80fd5b5f80fd5b5f80fd5b5f80fd5b5f80fd5b5f80fd";
@@ -34,6 +35,10 @@ contract Deploy is Script {
         USD usd = new USD();
         usd.mint(deployer, 500_000 ether);
 
+        // 4. Deploy JEDKH token
+        JEDKH jedkh = new JEDKH();
+        jedkh.mint(deployer, 500_000 ether);
+
         vm.stopBroadcast();
 
         string memory json = string(abi.encodePacked(
@@ -42,6 +47,7 @@ contract Deploy is Script {
             '",\n  "FalconVerifierNTT": "', vm.toString(falconNTT),
             '",\n  "DilithiumVerifierNTT": "', vm.toString(dilithiumNTT),
             '",\n  "USD": "', vm.toString(address(usd)),
+            '",\n  "JEDKH": "', vm.toString(address(jedkh)),
             '",\n  "payerAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"\n}'
         ));
         vm.writeFile("deployments.json", json);

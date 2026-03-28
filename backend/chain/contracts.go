@@ -229,6 +229,22 @@ const uniswapV3PoolABIJSON = `[
 	}
 ]`
 
+const mockSwapperABIJSON = `[
+	{
+		"inputs": [
+			{"name": "tokenIn", "type": "address"},
+			{"name": "tokenOut", "type": "address"},
+			{"name": "amountIn", "type": "uint256"},
+			{"name": "amountOutMin", "type": "uint256"},
+			{"name": "recipient", "type": "address"}
+		],
+		"name": "swap",
+		"outputs": [{"name": "amountOut", "type": "uint256"}],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	}
+]`
+
 var (
 	FactoryABI       abi.ABI
 	WalletABI        abi.ABI
@@ -237,6 +253,7 @@ var (
 	SwapRouterABI    abi.ABI
 	QuoterV2ABI      abi.ABI
 	UniswapV3PoolABI abi.ABI
+	MockSwapperABI   abi.ABI
 )
 
 func init() {
@@ -268,5 +285,9 @@ func init() {
 	UniswapV3PoolABI, err = abi.JSON(strings.NewReader(uniswapV3PoolABIJSON))
 	if err != nil {
 		panic("parsing UniswapV3Pool ABI: " + err.Error())
+	}
+	MockSwapperABI, err = abi.JSON(strings.NewReader(mockSwapperABIJSON))
+	if err != nil {
+		panic("parsing MockSwapper ABI: " + err.Error())
 	}
 }

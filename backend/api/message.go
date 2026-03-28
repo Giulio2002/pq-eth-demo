@@ -126,11 +126,11 @@ func (s *Server) handleSwapMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	amountIn := new(big.Int)
-	amountIn.SetString(req.AmountIn, 10)
+	amountIn.SetString(strings.TrimPrefix(req.AmountIn, "0x"), 16)
 
 	minAmountOut := new(big.Int)
 	if req.MinAmountOut != "" {
-		minAmountOut.SetString(req.MinAmountOut, 10)
+		minAmountOut.SetString(strings.TrimPrefix(req.MinAmountOut, "0x"), 16)
 	}
 
 	targets, values, datas, err := s.buildSwapBatch(req.Direction, common.HexToAddress(req.Wallet), amountIn, minAmountOut)

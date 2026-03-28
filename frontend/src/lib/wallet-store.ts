@@ -5,7 +5,8 @@ export interface StoredWallet {
   walletAddress: string;
   algorithm: AlgorithmType;
   publicKey: string;
-  secretKey: string;
+  secretKey: string;       // PQ: hex private key. Ephemeral ECDSA: hex seed (32 bytes).
+  ephemeralIndex?: number; // Ephemeral ECDSA: current key index (0..8191).
   createdAt: string;
 }
 

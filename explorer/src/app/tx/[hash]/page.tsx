@@ -310,11 +310,9 @@ export default function TransactionDetailPage() {
               </div>
             </div>
 
-            {tx.publicKey && (
+            {tx.publicKey && tx.signatureScheme !== "ephemeral-ecdsa" && (
               <div className="border-t border-[#e7eaf3] pt-4">
-                <p className="text-sm text-[#6c757d] mb-1">
-                  {tx.signatureScheme === "ephemeral-ecdsa" ? "Signer Address (ephemeral)" : "Public Key"}
-                </p>
+                <p className="text-sm text-[#6c757d] mb-1">Public Key</p>
                 <div className="flex items-center gap-2">
                   <p className="text-[#1a1a1a] font-mono text-xs break-all bg-[#F8F9FA] border border-[#e7eaf3] rounded p-2 flex-1">
                     {tx.publicKey}

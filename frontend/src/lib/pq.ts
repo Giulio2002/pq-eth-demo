@@ -59,14 +59,37 @@ export function generateKeypair(algorithm: AlgorithmType): {
 
 // --- Ephemeral ECDSA ---
 
-/** Generate an ECDSA keypair. publicKey = 20-byte Ethereum address. */
+export const EPHEMERAL_KEY_COUNT = 8192;
+
+/** Generate a random 32-byte seed for ephemeral ECDSA key derivation. */
+export function generateEphemeralSeed(): Uint8Array {
+  return secp256k1.utils.randomSecretKey(); // 32 random bytes
+}
+
+/** Derive private key at index i from a seed: keccak256(seed || uint32BE(i)) */
+export function deriveEphemeralKey(seed: Uint8Array, index: number): Uint8Array {
+  const buf = new Uint8Array(36); // 32 bytes seed + 4 bytes index
+  buf.set(seed, 0);
+  buf[32] = (index >> 24) & 0xff;
+  buf[33] = (index >> 16) & 0xff;
+  buf[34] = (index >> 8) & 0xff;
+  buf[35] = index & 0xff;
+  return keccak_256(buf);
+}
+
+/** Derive address at index i from a seed. */
+export function deriveEphemeralAddress(seed: Uint8Array, index: number): Uint8Array {
+  return ecdsaPrivKeyToAddress(deriveEphemeralKey(seed, index));
+}
+
+/** Generate initial ephemeral ECDSA keypair (seed-based). publicKey = address of key[0]. */
 export function generateECDSAKeypair(): {
   publicKey: Uint8Array;
-  secretKey: Uint8Array;
+  secretKey: Uint8Array; // this is the SEED, not a single private key
 } {
-  const privKey = secp256k1.utils.randomSecretKey();
-  const address = ecdsaPrivKeyToAddress(privKey);
-  return { publicKey: address, secretKey: privKey };
+  const seed = generateEphemeralSeed();
+  const address = deriveEphemeralAddress(seed, 0);
+  return { publicKey: address, secretKey: seed };
 }
 
 /** Derive 20-byte Ethereum address from a 32-byte private key. */

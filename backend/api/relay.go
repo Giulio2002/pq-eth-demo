@@ -249,8 +249,9 @@ func (s *Server) handleSwap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Direction != "eth_to_usd" && req.Direction != "usd_to_eth" {
-		writeError(w, http.StatusBadRequest, "direction must be eth_to_usd or usd_to_eth")
+	validDirs := map[string]bool{"eth_to_usd": true, "usd_to_eth": true, "eth_to_jedkh": true, "jedkh_to_eth": true}
+	if !validDirs[req.Direction] {
+		writeError(w, http.StatusBadRequest, "invalid swap direction")
 		return
 	}
 
@@ -261,7 +262,7 @@ func (s *Server) handleSwap(w http.ResponseWriter, r *http.Request) {
 	}
 
 	amountIn := new(big.Int)
-	amountIn.SetString(req.AmountIn, 10)
+	amountIn.SetString(strings.TrimPrefix(req.AmountIn, "0x"), 16)
 	if amountIn.Sign() <= 0 {
 		writeError(w, http.StatusBadRequest, "amountIn must be positive")
 		return
@@ -269,7 +270,7 @@ func (s *Server) handleSwap(w http.ResponseWriter, r *http.Request) {
 
 	minAmountOut := new(big.Int)
 	if req.MinAmountOut != "" {
-		minAmountOut.SetString(req.MinAmountOut, 10)
+		minAmountOut.SetString(strings.TrimPrefix(req.MinAmountOut, "0x"), 16)
 	}
 
 	sigBytes, err := hexDecode(req.Signature)
@@ -304,7 +305,7 @@ func (s *Server) handleSwap(w http.ResponseWriter, r *http.Request) {
 	dbTx := &db.Transaction{
 		TxHash:        tx.Hash().Hex(),
 		WalletAddress: wallet.Address,
-		ToAddress:     strings.ToLower(s.cfg.Deployments.SwapRouter),
+		ToAddress:     strings.ToLower(s.cfg.Deployments.MockSwapper),
 		Value:         "0x" + amountIn.Text(16),
 		Status:        "pending",
 		Timestamp:     time.Now().UTC().Format(time.RFC3339),
@@ -334,90 +335,53 @@ func (s *Server) handleSwap(w http.ResponseWriter, r *http.Request) {
 func (s *Server) buildSwapBatch(direction string, walletAddr common.Address, amountIn, minAmountOut *big.Int) ([]common.Address, []*big.Int, [][]byte, error) {
 	weth := common.HexToAddress(s.cfg.Deployments.WETH9)
 	usd := common.HexToAddress(s.cfg.Deployments.USD)
-	router := common.HexToAddress(s.cfg.Deployments.SwapRouter)
+	jedkh := common.HexToAddress(s.cfg.Deployments.JEDKH)
+	swapper := common.HexToAddress(s.cfg.Deployments.MockSwapper)
 
-	if direction == "eth_to_usd" {
-		// Step 1: WETH.deposit() with ETH value
+	var tokenIn, tokenOut common.Address
+	var needsDeposit bool
+	switch direction {
+	case "eth_to_usd":
+		tokenIn, tokenOut, needsDeposit = weth, usd, true
+	case "usd_to_eth":
+		tokenIn, tokenOut = usd, weth
+	case "eth_to_jedkh":
+		tokenIn, tokenOut, needsDeposit = weth, jedkh, true
+	case "jedkh_to_eth":
+		tokenIn, tokenOut = jedkh, weth
+	default:
+		return nil, nil, nil, fmt.Errorf("unknown direction: %s", direction)
+	}
+
+	var targets []common.Address
+	var values []*big.Int
+	var datas [][]byte
+
+	if needsDeposit {
 		depositData, err := chain.WETH9ABI.Pack("deposit")
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("encoding deposit: %w", err)
 		}
-
-		// Step 2: WETH.approve(SwapRouter, amountIn)
-		approveData, err := chain.ERC20ABI.Pack("approve", router, amountIn)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("encoding approve: %w", err)
-		}
-
-		// Step 3: SwapRouter.exactInputSingle
-		deadline := new(big.Int).SetInt64(time.Now().Add(10 * time.Minute).Unix())
-		type ExactInputSingleParams struct {
-			TokenIn           common.Address
-			TokenOut          common.Address
-			Fee               *big.Int
-			Recipient         common.Address
-			Deadline          *big.Int
-			AmountIn          *big.Int
-			AmountOutMinimum  *big.Int
-			SqrtPriceLimitX96 *big.Int
-		}
-		params := ExactInputSingleParams{
-			TokenIn:           weth,
-			TokenOut:          usd,
-			Fee:               big.NewInt(3000),
-			Recipient:         walletAddr,
-			Deadline:          deadline,
-			AmountIn:          amountIn,
-			AmountOutMinimum:  minAmountOut,
-			SqrtPriceLimitX96: big.NewInt(0),
-		}
-		swapData, err := chain.SwapRouterABI.Pack("exactInputSingle", params)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("encoding swap: %w", err)
-		}
-
-		targets := []common.Address{weth, weth, router}
-		values := []*big.Int{amountIn, big.NewInt(0), big.NewInt(0)}
-		datas := [][]byte{depositData, approveData, swapData}
-		return targets, values, datas, nil
+		targets = append(targets, weth)
+		values = append(values, amountIn)
+		datas = append(datas, depositData)
 	}
 
-	// usd_to_eth
-	// Step 1: USD.approve(SwapRouter, amountIn)
-	approveData, err := chain.ERC20ABI.Pack("approve", router, amountIn)
+	approveData, err := chain.ERC20ABI.Pack("approve", swapper, amountIn)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("encoding approve: %w", err)
 	}
+	targets = append(targets, tokenIn)
+	values = append(values, big.NewInt(0))
+	datas = append(datas, approveData)
 
-	// Step 2: SwapRouter.exactInputSingle (USD -> WETH)
-	deadline := new(big.Int).SetInt64(time.Now().Add(10 * time.Minute).Unix())
-	type ExactInputSingleParams struct {
-		TokenIn           common.Address
-		TokenOut          common.Address
-		Fee               *big.Int
-		Recipient         common.Address
-		Deadline          *big.Int
-		AmountIn          *big.Int
-		AmountOutMinimum  *big.Int
-		SqrtPriceLimitX96 *big.Int
-	}
-	params := ExactInputSingleParams{
-		TokenIn:           usd,
-		TokenOut:          weth,
-		Fee:               big.NewInt(3000),
-		Recipient:         walletAddr,
-		Deadline:          deadline,
-		AmountIn:          amountIn,
-		AmountOutMinimum:  minAmountOut,
-		SqrtPriceLimitX96: big.NewInt(0),
-	}
-	swapData, err := chain.SwapRouterABI.Pack("exactInputSingle", params)
+	swapData, err := chain.MockSwapperABI.Pack("swap", tokenIn, tokenOut, amountIn, minAmountOut, walletAddr)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("encoding swap: %w", err)
 	}
+	targets = append(targets, swapper)
+	values = append(values, big.NewInt(0))
+	datas = append(datas, swapData)
 
-	targets := []common.Address{usd, router}
-	values := []*big.Int{big.NewInt(0), big.NewInt(0)}
-	datas := [][]byte{approveData, swapData}
 	return targets, values, datas, nil
 }

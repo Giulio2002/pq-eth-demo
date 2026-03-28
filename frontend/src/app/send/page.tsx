@@ -6,7 +6,7 @@ import WalletHeader from "@/components/WalletHeader";
 import AmountInput from "@/components/AmountInput";
 import { getPrimaryWallet, type StoredWallet } from "@/lib/wallet-store";
 import { getExecuteMessage, execute, getPoolPrice, getAssets } from "@/lib/api";
-import { initPQ, sign, generateECDSAKeypair, ecdsaSignWithRotation, ecdsaPrivKeyToAddress } from "@/lib/pq";
+import { initPQ, sign, deriveEphemeralKey, deriveEphemeralAddress, ecdsaSignWithRotation } from "@/lib/pq";
 import { saveWallet } from "@/lib/wallet-store";
 import {
   hexToBytes,
@@ -75,25 +75,24 @@ export default function SendPage() {
       let signature: Uint8Array;
 
       if (isEphemeralECDSA(algo)) {
-        // Ephemeral ECDSA: generate next key, include in hash, sign, rotate
-        const nextKey = generateECDSAKeypair();
-        const nextSignerHex = bytesToHex(nextKey.publicKey);
+        // Ephemeral ECDSA: derive current + next key from seed, sign, bump index
+        const seed = hexToBytes(wallet.secretKey);
+        const idx = wallet.ephemeralIndex ?? 0;
+        const currentKey = deriveEphemeralKey(seed, idx);
+        const nextAddr = deriveEphemeralAddress(seed, idx + 1);
+        const nextSignerHex = bytesToHex(nextAddr);
 
         const { messageHash } = await getExecuteMessage(
           wallet.walletAddress, recipient, weiValue, "0x", nextSignerHex
         );
 
         const msgBytes = hexToBytes(messageHash);
-        const skBytes = hexToBytes(wallet.secretKey);
-        signature = ecdsaSignWithRotation(skBytes, msgBytes, nextKey.publicKey);
+        signature = ecdsaSignWithRotation(currentKey, msgBytes, nextAddr);
 
-        // Rotate: update stored wallet with next key
-        await saveWallet({
-          ...wallet,
-          secretKey: bytesToHex(nextKey.secretKey),
-          publicKey: nextSignerHex,
-        });
-        setWallet({ ...wallet, secretKey: bytesToHex(nextKey.secretKey), publicKey: nextSignerHex });
+        // Bump index (seed stays the same)
+        const updated = { ...wallet, ephemeralIndex: idx + 1 };
+        await saveWallet(updated);
+        setWallet(updated);
       } else {
         const { messageHash } = await getExecuteMessage(
           wallet.walletAddress, recipient, weiValue, "0x"

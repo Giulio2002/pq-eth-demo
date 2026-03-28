@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AlgorithmSelector from "@/components/AlgorithmSelector";
-import { initPQ, generateKeypair, isPQReady } from "@/lib/pq";
+import { initPQ, generateKeypair, isPQReady, deriveEphemeralAddress, EPHEMERAL_KEY_COUNT } from "@/lib/pq";
 import { createWallet } from "@/lib/api";
 import { saveWallet } from "@/lib/wallet-store";
 import {
@@ -60,6 +60,7 @@ export default function CreateWallet() {
         algorithm,
         publicKey: bytesToHex(publicKey),
         secretKey: bytesToHex(secretKey),
+        ephemeralIndex: isEphemeralECDSA(algorithm) ? 0 : undefined,
         createdAt: new Date().toISOString(),
       });
       setStep("done");
@@ -153,15 +154,34 @@ export default function CreateWallet() {
                 </p>
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Public Key Size</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {isEphemeralECDSA(algorithm) ? "Initial Signer Address" : "Public Key Size"}
+                </p>
                 <p className="text-gray-900 font-mono mt-1.5">
-                  {publicKey.length} bytes
+                  {isEphemeralECDSA(algorithm) ? bytesToHex(publicKey) : `${publicKey.length} bytes`}
                 </p>
               </div>
+              {isEphemeralECDSA(algorithm) && secretKey && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Pre-derived Signers ({EPHEMERAL_KEY_COUNT} total)
+                  </p>
+                  <div className="mt-1.5 max-h-32 overflow-y-auto bg-gray-50 rounded-lg p-2 font-mono text-xs text-gray-700 space-y-0.5">
+                    {Array.from({ length: Math.min(10, EPHEMERAL_KEY_COUNT) }, (_, i) => (
+                      <div key={i} className="flex gap-2">
+                        <span className="text-gray-400 w-8 text-right">#{i}</span>
+                        <span>{bytesToHex(deriveEphemeralAddress(secretKey, i))}</span>
+                      </div>
+                    ))}
+                    <div className="text-gray-400">... {EPHEMERAL_KEY_COUNT - 10} more</div>
+                  </div>
+                </div>
+              )}
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                 <p className="text-amber-800 text-sm">
-                  Your private key is stored securely in your browser. It will never
-                  be sent to the backend or any external service.
+                  {isEphemeralECDSA(algorithm)
+                    ? `A 32-byte seed is stored in your browser. ${EPHEMERAL_KEY_COUNT} signing keys are derived deterministically. Each transaction uses the next key.`
+                    : "Your private key is stored securely in your browser. It will never be sent to the backend or any external service."}
                 </p>
               </div>
             </div>

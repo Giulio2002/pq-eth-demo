@@ -246,10 +246,17 @@ func (s *Server) handleWalletAssets(w http.ResponseWriter, r *http.Request) {
 	// USD balance
 	usdBal := s.getERC20Balance(ctx, common.HexToAddress(s.cfg.Deployments.USD), addr)
 
+	// JEDKH balance
+	jedkhBal := big.NewInt(0)
+	if s.cfg.Deployments.JEDKH != "" {
+		jedkhBal = s.getERC20Balance(ctx, common.HexToAddress(s.cfg.Deployments.JEDKH), addr)
+	}
+
 	writeJSON(w, http.StatusOK, map[string]string{
-		"eth":  ethBal.String(),
-		"weth": wethBal.String(),
-		"usd":  usdBal.String(),
+		"eth":   ethBal.String(),
+		"weth":  wethBal.String(),
+		"usd":   usdBal.String(),
+		"jedkh": jedkhBal.String(),
 	})
 }
 

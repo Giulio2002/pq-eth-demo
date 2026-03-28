@@ -43,6 +43,7 @@ export interface Assets {
   eth: string;
   weth: string;
   usd: string;
+  jedkh?: string;
 }
 
 export async function getAssets(address: string): Promise<Assets> {
@@ -146,6 +147,8 @@ export async function swap(
 
 export interface PoolPrice {
   ethUsd: number;
+  jedkhEth?: number;
+  jedkhUsd?: number;
 }
 
 export async function getPoolPrice(): Promise<PoolPrice> {

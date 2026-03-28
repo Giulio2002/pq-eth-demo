@@ -21,6 +21,8 @@ type Deployments struct {
 	NonfungiblePositionManager   string `json:"NonfungiblePositionManager"`
 	QuoterV2                     string `json:"QuoterV2"`
 	ETHUSDPool                   string `json:"ETH_USD_Pool"`
+	MockSwapper                  string `json:"MockSwapper"`
+	JEDKH                        string `json:"JEDKH"`
 	PayerAddress                 string `json:"payerAddress"`
 }
 
