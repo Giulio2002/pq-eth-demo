@@ -18,10 +18,18 @@ export default function WalletSelector() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    getAllWallets().then((ws) => {
-      setWallets(ws);
-      setActive(getActiveAddress());
-    });
+    function load() {
+      getAllWallets().then((ws) => {
+        setWallets(ws);
+        setActive(getActiveAddress());
+      });
+    }
+    load();
+    // Re-check when window gets focus (e.g. after navigating back from /create)
+    window.addEventListener("focus", load);
+    // Also poll every 2s to catch new wallet creation on same page
+    const interval = setInterval(load, 2000);
+    return () => { window.removeEventListener("focus", load); clearInterval(interval); };
   }, []);
 
   if (wallets.length === 0) return null;
